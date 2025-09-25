@@ -50,6 +50,8 @@ natFreqRads_i = 2*pi.*natFreqHz_i;
 % at x(0), cosh(0) and sin(0) are zero and thus drop
 syms A B C D
 syms k xs sig
+numEvs = 6;
+
 gensol = A*cosh(k*xs/L) + B*cos(k*xs/L) - sig * (C*sinh(k*xs/L) + D*sin(k*xs/L));
 diffGensol = diff(gensol, xs);
 
@@ -72,28 +74,35 @@ eigenmode = subs(gensol, {A,B,C,D,sig}, {subs(A_val,{C,D,sig},{C_val,D_val,sig_v
                                subs(B_val,{C,D,sig},{C_val,D_val,sig_val}), ...
                                C_val,D_val,sig_val});
 
+diffEigenmode = subs(diffGensol, {A,B,C,D,sig}, {subs(A_val,{C,D,sig},{C_val,D_val,sig_val}), ...
+                               subs(B_val,{C,D,sig},{C_val,D_val,sig_val}), ...
+                               C_val,D_val,sig_val});
+
 % evaluate at x=L
 eigenmodeAtL = subs(eigenmode, xs, L);
+eigenmodeAtLfun = matlabFunction(eigenmodeAtL);
+diffEigenmodeAtL = subs(diffEigenmode, xs, L);
 
 % solve for k at L, loop over vpasolve with different intervals to get all
 % solutions, ugly but ah well
 i = 0;
 numSols = 0; % Initialize the number of solutions found
-kvals = []; % Initialize an array to store the values of k
+kvals = zeros(1,numEvs); % Initialize an array to store the values of k
 
-while numSols < 6
-    kval = vpasolve(eigenmodeAtL == 0,k,[i, i+1]);
+while numSols < numEvs
+    kval = vpasolve(eigenmodeAtL == (-1)^numSols,k,[i, i+1]);
     if ~isempty(kval) && ~any(ismember(round(kval,2),round(kvals,2)))
         kvals(numSols + 1,1) = kval;
         numSols = numSols + 1;
     end
     i = i + 1;
+    assert(i<5*numEvs,"Loop is going on too long.")
 end
 
 % calculate each mode shape
-F = tiledlayout(2,3);
+F = tiledlayout(2,ceil(numEvs/2));
 xValues = linspace(0, L, 100);
-for i = 1:6
+for i = 1:numEvs
     nexttile;
 
     kval = kvals(i);
@@ -104,10 +113,12 @@ for i = 1:6
     
     modeShapeValues = double(subs(modeShape, xs, xValues));
     
+    natFreq = ((kval^2)/(2*pi*L^2))*sqrt(E*I/m);
+
     % Plot the mode shape
     plot(xValues, modeShapeValues);
-    title(['Mode Shape for k = ', num2str(kval)]);
-    xlabel('Position along the beam (m)');
+    title(['Mode Shape for f = ', num2str(natFreq), ' Hz']);
+    xlabel('Position along the beam (x/L)');
     ylabel('Mode Shape Amplitude');
     grid on;
 end
