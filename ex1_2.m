@@ -15,8 +15,9 @@ I = (10^-8)/12;  % Moment of inertia - m^4
 
 % convert to mass per unit length
 m = rho*A;
+nev = 6; % number of modes/eigenvalues to analyze
 
-nel = 100; % number of elements
+nel = 10; % number of elements
 nno = nel + 1; % number of nodes
 nbc = 2;  % number of boundary conditions (used for error detection)
 
@@ -62,39 +63,55 @@ Dbc = [Kbc zeroM; zeroM -Mbc];
 %% question a
 % calculate the six lowest eigenfrequencies (in Hz) of Finite Element models
 % of the beam using the MATLAB command 'eig'
-[eigenVectorsa, eigenValuesa] = eig(Cbc, Dbc);
-eigenValuesa = imag(diag(eigenValuesa));
-validEvs = eigenValuesa > 0;
+[eigenVectors, eigenValues] = eig(Dbc, -Cbc);
+eigenValues = imag(diag(eigenValues));
+validEvs = eigenValues > 0;
 
 % filter negatives
-eigenValuesa = eigenValuesa(validEvs); % Filter out negative eigenvalues
-eigenVectorsa = eigenVectorsa(1:size(Mbc,1), validEvs);
+eigenValues = eigenValues(validEvs); % Filter out negative eigenvalues
+eigenVectors = eigenVectors(1:size(Mbc,1), validEvs);
 
 % sort eigenvalues
-eigenValuesa = sort(eigenValuesa);
+sortedEigenValues = sort(eigenValues, 'ascend');
+sortedEigenVectors = zeros(size(eigenVectors,1),nev);
+for i = 1:nev
+    smallEigenValue = sortedEigenValues(i);
+    idx = find(eigenValues == smallEigenValue);
+    sortedEigenVectors(:,i) = eigenVectors(:,idx);
+end
 
 % Extract eigenfrequencies from the eigenvalues matrix
-eigenfrequenciesa = eigenValuesa / (2 * pi);
-eigenfrequenciesa = eigenfrequenciesa(1:6); % Select the six lowest frequencies
+eigenfrequencies = sortedEigenValues ./ (2 * pi);
+eigenfrequencies = eigenfrequencies(1:6); % Select the six lowest frequencies
 % Display the calculated eigenfrequencies
 disp('The six lowest eigenfrequencies calculated with ''eig'' (in Hz) are:');
-disp(eigenfrequenciesa);
+disp(eigenfrequencies);
 
 
 % Calculate the mode shapes corresponding to the eigenfrequencies
-modeShapesa = eigenVectorsa(:, 1:6);
+modeShapesa = sortedEigenVectors;
 % add the bc columns/rows back to the eigenvectors (all zeros)
 modeShapesaFull = zeros(2*nno,6);
 modeShapesaFull(2:end-1,:) = modeShapesa;
 
 
 % Display the calculated mode shapes
-tiledlayout(2,3);
-title("Mode shapes calculated with ''eig''")
-subtitle(num2str(nel) + " number of elements.")
+tl = tiledlayout(2,3);
+title(tl, "Mode shapes calculated with ''eig''")
+subtitle(tl, "Beam is divided in " + num2str(nel) + " elements.")
 xno = 1:1:nno;
 dispDOFs = 1:2:nno*2;
 for p = 1:6
-    nexttile;
-    plot(xno, imag(modeShapesaFull(dispDOFs,p)))
+    nexttile
+    % normalize mode shape
+    modeShape = imag(modeShapesaFull(dispDOFs,p));
+    modeShapeNorm = modeShape/max(modeShape);
+    plot(xno, modeShapeNorm)
+
+    title("Mode shape for natural frequency " + num2str(eigenfrequencies(p)) + " Hz")
+    xlabel("Beam position x/L [-]")
+    xlim([0,L])
+    ylabel("Mode shape amplitude [-]");
+    ylim([-1 1])
+    grid on;
 end
