@@ -99,49 +99,37 @@ for p = 1:6
     plot(xno, imag(modeShapesaFull(dispDOFs,p)))
 end
 
-%% Ex3
+%% Exercise 3a 
 % Method 1
 
-f = 0.2:0.2:500;   % Frequency range in Hz
+f = 0.2:0.2:500;  % Frequency range in Hz
 
 % Dynamic stiffness matrix 
-K_dynamic = zeros(size(Kbc,1), size(Kbc,2), length(f));
-
 for i = 1:length(f)
-    K_dynamic(:,:,i) = Kbc - (2*pi*f(i))^2 * Mbc;
+    K_dynamic(:,:,i) = inv(Kbc - (2*pi*f(i))^2 * Mbc); % Computing the inverse dynamic stiffness matrix
+    lastDiag(i) = K_dynamic(end,end,i); % Getting the last diagonal components
 end
 
-% Taking the last diagonal value of the stiffness matrix
-numFreq = length(f);                % number of frequency points
-lastDiag = zeros(1, numFreq);       % preallocate a vector to store results
-
-for i = 1:numFreq
-    lastDiag(i) = K_dynamic(end,end,i);  % take the last diagonal element
-end
-
-% Compute FRF
-FRF = 1 ./ lastDiag;
-
-% Create figure
+% FRF
 figure;
 
-% --- Magnitude plot ---
-subplot(2,1,1);              % top subplot
-loglog(f, abs(FRF), 'LineWidth', 1.5);
+% Magnitude
+subplot(2,1,1);              
+loglog(f, abs(lastDiag), 'LineWidth', 1.5);
 xlabel('Frequency (Hz)');
-ylabel('|FRF| (1/N)');
-title('FRF Magnitude (log-log scale)');
+ylabel('Magnitude');
+title('FRF Magnitude for 100 elements');
 grid on;
 
-% --- Phase plot ---
-subplot(2,1,2);              % bottom subplot
-semilogx(f, angle(FRF)*180/pi, 'LineWidth', 1.5); % convert phase to degrees
+% Phase
+subplot(2,1,2);              
+semilogx(f, angle(lastDiag)*180/pi, 'LineWidth', 1.5); % convert phase to degrees
 xlabel('Frequency (Hz)');
-ylabel('Phase (deg)');
-title('FRF Phase (linear-log scale)');
+ylabel('Phase (degrees)');
+title('FRF Phase for 100 elements');
 grid on;
 
-%%
+%% Method 2
 % Inputs:
 % omega  : frequency (scalar)
 % u0     : matrix of mode shapes, each column u0(:,k) corresponds to u0k
