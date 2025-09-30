@@ -54,6 +54,7 @@ numEvs = 6;
 
 gensol = A*cosh(k*xs/L) + B*cos(k*xs/L) - sig * (C*sinh(k*xs/L) + D*sin(k*xs/L));
 diffGensol = diff(gensol, xs);
+diff2Gensol = diff(gensol, xs, 2);
 
 % Define boundary conditions and solve for coefficients
 BC1 = subs(gensol, xs, 0) == 0;
@@ -90,13 +91,13 @@ numSols = 0; % Initialize the number of solutions found
 kvals = zeros(1,numEvs); % Initialize an array to store the values of k
 
 while numSols < numEvs
-    kval = vpasolve(eigenmodeAtL == (-1)^numSols,k,[i, i+1]);
+    kval = vpasolve(eigenmodeAtL == -(-1)^numSols,k,[i, i+1]);
     if ~isempty(kval) && ~any(ismember(round(kval,2),round(kvals,2)))
         kvals(numSols + 1,1) = kval;
         numSols = numSols + 1;
     end
     i = i + 1;
-    assert(i<5*numEvs,"Loop is going on too long.")
+    assert(i<25*numEvs,"Loop is going on too long, stopped at %d solution(s).", numSols)
 end
 
 % calculate each mode shape
@@ -112,14 +113,17 @@ for i = 1:numEvs
     % Evaluate the mode shape at various points along the beam
     
     modeShapeValues = double(subs(modeShape, xs, xValues));
+    maxVal = max(abs(modeShapeValues));
     
     natFreq = ((kval^2)/(2*pi*L^2))*sqrt(E*I/m);
 
     % Plot the mode shape
-    plot(xValues, modeShapeValues);
+    plot(xValues, modeShapeValues./maxVal);
     title(['Mode Shape for f = ', num2str(natFreq), ' Hz']);
     xlabel('Position along the beam (x/L)');
     ylabel('Mode Shape Amplitude');
+    xlim([0 L])
+    ylim([-1 1])
     grid on;
 end
 

@@ -17,11 +17,13 @@ I = (10^-8)/12;  % Moment of inertia - m^4
 m = rho*A;
 nev = 6; % number of modes/eigenvalues to analyze
 
-nel = 10; % number of elements
+nel = 50; % number of elements
 nno = nel + 1; % number of nodes
 nbc = 2;  % number of boundary conditions (used for error detection)
 
 lel = L/nel; % element length
+
+solver = "eig";
 
 %% construct mass and stiffness matrices
 Mel = (rho*A*lel/420).*[    156   22*lel      54  -13*lel;
@@ -61,9 +63,26 @@ Cbc = [zeroM Mbc; Mbc zeroM];
 Dbc = [Kbc zeroM; zeroM -Mbc];
 
 %% question a
+
 % calculate the six lowest eigenfrequencies (in Hz) of Finite Element models
-% of the beam using the MATLAB command 'eig'
-[eigenVectors, eigenValues] = eig(Dbc, -Cbc);
+% of the beam using the MATLAB command specified in solver
+if solver == "eig"
+    t0 = cputime; % start timing
+    [eigenVectors, eigenValues] = eig(Dbc, -Cbc);
+elseif solver == "eigs"
+    % make matrices sparse
+    spaDbc = sparse(Dbc);
+    spaCbc = sparse(Cbc);
+    t0 = cputime; % start timing
+    [eigenVectors, eigenValues] = eigs(spaDbc, -spaCbc, nev*2, "smallestabs");
+else
+    error('Specified solver not recognized.')
+end
+
+t1 = cputime; % stop timing
+reqTime = t1 - t0;
+
+
 eigenValues = imag(diag(eigenValues));
 validEvs = eigenValues > 0;
 
@@ -97,7 +116,7 @@ modeShapesaFull(2:end-1,:) = modeShapesa;
 
 % Display the calculated mode shapes
 tl = tiledlayout(2,3);
-title(tl, "Mode shapes calculated with ''eig''")
+title(tl, "Mode shapes calculated with ''" + solver + "'' in " + num2str(round(reqTime,6)) + " seconds")
 subtitle(tl, "Beam is divided in " + num2str(nel) + " elements.")
 xno = 1:1:nno;
 dispDOFs = 1:2:nno*2;
@@ -106,12 +125,12 @@ for p = 1:6
     % normalize mode shape
     modeShape = imag(modeShapesaFull(dispDOFs,p));
     modeShapeNorm = modeShape/max(modeShape);
-    plot(xno, modeShapeNorm)
+    plot(xno, modeShapeNorm); hold on;
 
     title("Mode shape for natural frequency " + num2str(eigenfrequencies(p)) + " Hz")
     xlabel("Beam position x/L [-]")
-    xlim([0,L])
+    xlim([1 nno])
     ylabel("Mode shape amplitude [-]");
     ylim([-1 1])
-    grid on;
+    grid on; hold off;
 end
