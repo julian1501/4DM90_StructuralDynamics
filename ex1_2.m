@@ -1,5 +1,6 @@
 % coded in matlab r2025a
 % exercise 1.2
+fprintf("Starting calculations\n")
 close all
 clearvars
 format short e
@@ -17,13 +18,14 @@ I = (10^-8)/12;  % Moment of inertia - m^4
 m = rho*A;
 nev = 6; % number of modes/eigenvalues to analyze
 
-nel = 50; % number of elements
+nel = 150; % number of elements
 nno = nel + 1; % number of nodes
-nbc = 2;  % number of boundary conditions (used for error detection)
 
 lel = L/nel; % element length
 
 solver = "eig";
+
+fprintf("Paramters initialized\n")
 
 %% construct mass and stiffness matrices
 Mel = (rho*A*lel/420).*[    156   22*lel      54  -13*lel;
@@ -46,15 +48,23 @@ for e = 1:nel
     K(idx, idx) = K(idx, idx) + Kel;
 end
 
+assert(M(end,end) ~= 0,"Last element of M not assigned a value.")
+fprintf("Mass and stiffness matrices generated\n")
+
 % Apply boundary conditions (pin at first node, vertical slider at second
 % node)
-rowColIdxs = 2:2*nno-1; % everything but the first and last row/col
-Mbc = M(rowColIdxs,rowColIdxs);
-Kbc = K(rowColIdxs,rowColIdxs);
+fixedDOFs = [1 2*nno];
+nbc = size(fixedDOFs,2);
+freeDOFs  = setdiff(1:2*nno,fixedDOFs);
+Mbc = M(freeDOFs,freeDOFs);
+Kbc = K(freeDOFs,freeDOFs);
+fprintf("Boundary conditions applied\n")
 
 % check if size matches with expected size based on the number of boundary
 % conditions
-assert(size(Mbc,1) == 2*nno-nbc, "The size of the matrix after applying boundary" + ...
+assert(all(size(Mbc) == 2*nno-nbc), "The size of the matrix after applying boundary" + ...
+    " conditions does not match with the number of boundary conditions specified: nbc = %d",nbc)
+assert(all(size(Kbc) == 2*nno-nbc), "The size of the matrix after applying boundary" + ...
     " conditions does not match with the number of boundary conditions specified: nbc = %d",nbc)
 
 % create  C and D as in slide 30 "SD2 Numerical modal analysis.pdf"
@@ -82,37 +92,35 @@ end
 t1 = cputime; % stop timing
 reqTime = t1 - t0;
 
+fprintf("Solved eigenvalue problem in %f seconds\n", reqTime)
 
-eigenValues = imag(diag(eigenValues));
-validEvs = eigenValues > 0;
+
+eigenValues = abs(imag(diag(eigenValues)));
+[~,validEvs] = unique(eigenValues, "stable");
 
 % filter negatives
 eigenValues = eigenValues(validEvs); % Filter out negative eigenvalues
 eigenVectors = eigenVectors(1:size(Mbc,1), validEvs);
 
 % sort eigenvalues
-sortedEigenValues = sort(eigenValues, 'ascend');
-sortedEigenVectors = zeros(size(eigenVectors,1),nev);
-for i = 1:nev
-    smallEigenValue = sortedEigenValues(i);
-    idx = find(eigenValues == smallEigenValue);
-    sortedEigenVectors(:,i) = eigenVectors(:,idx);
-end
+[sortedEigenValues, sortIdx] = sort(eigenValues, 'ascend');
+sortedEigenVectors = eigenVectors(:, sortIdx(1:6));
 
 % Extract eigenfrequencies from the eigenvalues matrix
 eigenfrequencies = sortedEigenValues ./ (2 * pi);
 eigenfrequencies = eigenfrequencies(1:6); % Select the six lowest frequencies
 % Display the calculated eigenfrequencies
-disp('The six lowest eigenfrequencies calculated with ''eig'' (in Hz) are:');
-disp(eigenfrequencies);
+% disp('The six lowest eigenfrequencies calculated with ''eig'' (in Hz) are:');
+% disp(eigenfrequencies);
 
 
 % Calculate the mode shapes corresponding to the eigenfrequencies
 modeShapesa = sortedEigenVectors;
 % add the bc columns/rows back to the eigenvectors (all zeros)
 modeShapesaFull = zeros(2*nno,6);
-modeShapesaFull(2:end-1,:) = modeShapesa;
+modeShapesaFull(freeDOFs,:) = modeShapesa;
 
+fprintf("Calculated all eigenfrequencies and mode shapes\n")
 
 % Display the calculated mode shapes
 tl = tiledlayout(2,3);
@@ -123,7 +131,7 @@ dispDOFs = 1:2:nno*2;
 for p = 1:6
     nexttile
     % normalize mode shape
-    modeShape = imag(modeShapesaFull(dispDOFs,p));
+    modeShape = real(modeShapesaFull(dispDOFs,p));
     modeShapeNorm = modeShape/max(abs(modeShape));
     plot(xno, modeShapeNorm); hold on;
 
@@ -134,3 +142,5 @@ for p = 1:6
     ylim([-1 1])
     grid on; hold off;
 end
+
+fprintf("Script complete\n--------------------------------\n\n")
