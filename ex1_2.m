@@ -124,7 +124,7 @@ for p = 1:6
     nexttile
     % normalize mode shape
     modeShape = imag(modeShapesaFull(dispDOFs,p));
-    modeShapeNorm = modeShape/max(modeShape);
+    modeShapeNorm = modeShape/max(abs(modeShape));
     plot(xno, modeShapeNorm); hold on;
 
     title("Mode shape for natural frequency " + num2str(eigenfrequencies(p)) + " Hz")
