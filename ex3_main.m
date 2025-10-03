@@ -15,12 +15,15 @@ I = (10^-8)/12;  % Moment of inertia - m^4
 
 % convert to mass per unit length
 m = rho*A;
+nev = 6; % number of modes/eigenvalues to analyze
 
 nel = 100; % number of elements
 nno = nel + 1; % number of nodes
 nbc = 2;  % number of boundary conditions (used for error detection)
 
 lel = L/nel; % element length
+
+solver = "eig";
 
 %% construct mass and stiffness matrices
 Mel = (rho*A*lel/420).*[    156   22*lel      54  -13*lel;
@@ -53,50 +56,83 @@ Kbc = K(rowColIdxs,rowColIdxs);
 % conditions
 assert(size(Mbc,1) == 2*nno-nbc, "The size of the matrix after applying boundary" + ...
     " conditions does not match with the number of boundary conditions specified: nbc = %d",nbc)
-%%
+
 % create  C and D as in slide 30 "SD2 Numerical modal analysis.pdf"
 zeroM = zeros(size(Mbc));
 Cbc = [zeroM Mbc; Mbc zeroM];
 Dbc = [Kbc zeroM; zeroM -Mbc];
 
 %% question a
+
 % calculate the six lowest eigenfrequencies (in Hz) of Finite Element models
-% of the beam using the MATLAB command 'eig'
-[eigenVectorsa, eigenValuesa] = eig(Cbc, Dbc);
-eigenValuesa = imag(diag(eigenValuesa));
-validEvs = eigenValuesa > 0;
+% of the beam using the MATLAB command specified in solver
+if solver == "eig"
+    t0 = cputime; % start timing
+    [eigenVectors, eigenValues] = eig(Dbc, -Cbc);
+elseif solver == "eigs"
+    % make matrices sparse
+    spaDbc = sparse(Dbc);
+    spaCbc = sparse(Cbc);
+    t0 = cputime; % start timing
+    [eigenVectors, eigenValues] = eigs(spaDbc, -spaCbc, nev*2, "smallestabs");
+else
+    error('Specified solver not recognized.')
+end
+
+t1 = cputime; % stop timing
+reqTime = t1 - t0;
+
+
+eigenValues = imag(diag(eigenValues));
+validEvs = eigenValues > 0;
 
 % filter negatives
-eigenValuesa = eigenValuesa(validEvs); % Filter out negative eigenvalues
-eigenVectorsa = eigenVectorsa(1:size(Mbc,1), validEvs);
+eigenValues = eigenValues(validEvs); % Filter out negative eigenvalues
+eigenVectors = eigenVectors(1:size(Mbc,1), validEvs);
 
 % sort eigenvalues
-eigenValuesa = sort(eigenValuesa);
+sortedEigenValues = sort(eigenValues, 'ascend');
+sortedEigenVectors = zeros(size(eigenVectors,1),nev);
+for i = 1:nev
+    smallEigenValue = sortedEigenValues(i);
+    idx = find(eigenValues == smallEigenValue);
+    sortedEigenVectors(:,i) = eigenVectors(:,idx);
+end
 
 % Extract eigenfrequencies from the eigenvalues matrix
-eigenfrequenciesa = eigenValuesa / (2 * pi);
-eigenfrequenciesa = eigenfrequenciesa(1:6); % Select the six lowest frequencies
+eigenfrequencies = sortedEigenValues ./ (2 * pi);
+eigenfrequencies = eigenfrequencies(1:6); % Select the six lowest frequencies
 % Display the calculated eigenfrequencies
 disp('The six lowest eigenfrequencies calculated with ''eig'' (in Hz) are:');
-disp(eigenfrequenciesa);
+disp(eigenfrequencies);
 
 
 % Calculate the mode shapes corresponding to the eigenfrequencies
-modeShapesa = eigenVectorsa(:, 1:6);
+modeShapesa = sortedEigenVectors;
 % add the bc columns/rows back to the eigenvectors (all zeros)
 modeShapesaFull = zeros(2*nno,6);
 modeShapesaFull(2:end-1,:) = modeShapesa;
 
 
 % Display the calculated mode shapes
-tiledlayout(2,3);
-title("Mode shapes calculated with ''eig''")
-subtitle(num2str(nel) + " number of elements.")
+tl = tiledlayout(2,3);
+title(tl, "Mode shapes calculated with ''" + solver + "'' in " + num2str(round(reqTime,6)) + " seconds")
+subtitle(tl, "Beam is divided in " + num2str(nel) + " elements.")
 xno = 1:1:nno;
 dispDOFs = 1:2:nno*2;
 for p = 1:6
-    nexttile;
-    plot(xno, imag(modeShapesaFull(dispDOFs,p)))
+    nexttile
+    % normalize mode shape
+    modeShape = imag(modeShapesaFull(dispDOFs,p));
+    modeShapeNorm = modeShape/max(modeShape);
+    plot(xno, modeShapeNorm); hold on;
+
+    title("Mode shape for natural frequency " + num2str(eigenfrequencies(p)) + " Hz")
+    xlabel("Beam position x/L [-]")
+    xlim([1 nno])
+    ylabel("Mode shape amplitude [-]");
+    ylim([-1 1])
+    grid on; hold off;
 end
 
 %% Exercise 3a 
@@ -130,25 +166,42 @@ title('FRF Phase for 100 elements');
 grid on;
 
 %% Method 2
-% Inputs:
-% omega  : frequency (scalar)
-% u0     : matrix of mode shapes, each column u0(:,k) corresponds to u0k
-% m      : vector of modal masses, m(k)
-% omega0 : vector of natural frequencies, omega0(k)
 
-omega = f*2*pi
-omega0 = eigenfrequenciesa*2*pi
+% Sort the lowest 6 eigenmodes
+[sortedVals, idx] = sort(eigenVectors, 'ascend');   
+lowest6 = sortedVals(:,1:6)      
 
+omega = f*2*pi % Omega\Frequency in Hz
+omega0 = eigenfrequencies*2*pi % Eigenfrequencies in Hz
 
-% Number of modes
-n = length(omega0);
+% Modal mass
+mk = zeros(6,1);   
 
-% Initialize H
-H = zeros(size(u0,1));
-
-% Sum over modes
-for k = 1:n
-    H = H + (u0(:,k) * u0(:,k)') / (m(k) * (omega0(k)^2 - omega^2));
+for u = 1:6
+    vec = lowest6(:,u);              
+    mk(u) = vec' * Mbc * vec;        
 end
 
+% Getting the transfer function
+for k = 1:6
+    H = (lowest6(k) * lowest6(k)') .\ (mk*(omega0(k).^2 - omega.^2))
+end
 
+% FRF method 2
+figure;
+
+% Magnitude
+subplot(2,1,1);              
+loglog(f, abs(H), 'LineWidth', 1.5);
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+title('FRF Magnitude 100 elements method 2');
+grid on;
+
+% Phase
+subplot(2,1,2);              
+semilogx(f, angle(H)*180/pi, 'LineWidth', 1.5); % convert phase to degrees
+xlabel('Frequency (Hz)');
+ylabel('Phase (degrees)');
+title('FRF Phase 100 elements method 2');
+grid on;
