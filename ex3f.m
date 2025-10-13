@@ -213,7 +213,7 @@ beta_d  = double(sol.b);
 
 fprintf('Symbolic solution: alpha = %.6e, beta = %.6e\n', alpha_d, beta_d);
 
-xi_allf = 0.5*(alpha_d/omega_n + beta_d.*omega_n);
+xi_allf = 0.5*(alpha_d./omega_n + beta_d.*omega_n);
 disp(xi_allf.');
 
 % Plot
