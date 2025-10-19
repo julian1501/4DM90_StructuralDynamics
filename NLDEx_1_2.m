@@ -192,3 +192,104 @@ legend({'(c) Sweep-up','(c) Sweep-down',...
         '(d) Sweep-up','(d) Sweep-down',...
         '(e) Sweep-up','(e) Sweep-down'}, 'Location','Best');
 grid on;
+
+%% g
+
+
+f_e = 34;              % excitation frequency [Hz]
+T_e = 1 / f_e;         % excitation period [s]
+N_t = 200;             % transient periods
+N_s = 200;             % steady-state periods
+N_o = 200;             % time points per period
+x0  = [0; 0];          % initial condition
+odeopts = odeset('RelTol',1e-9,'AbsTol',1e-12);  % tight tolerances for accuracy
+
+sys_duffing = @(t,x) [ x(2);
+    (1/m)*(-c*x(2) - k1*x(1) - k3*x(1)^3 + Famp*cos(2*pi*f_e*t)) ];
+
+[t_ss, x_ss] = simulate_and_plot(sys_duffing, x0, T_e, N_o, N_t, N_s, odeopts);
+
+poincare_section(t_ss, x_ss, T_e, N_s);
+
+f_range = [0 500];  % frequency axis limits [Hz]
+frequency_spectrum(t_ss, x_ss(:,1), T_e, f_range);
+
+%% h
+
+f_e = 37;              % excitation frequency [Hz]
+T_e = 1 / f_e;         % excitation period [s]
+N_t = 200;             % transient periods
+N_s = 200;             % steady-state periods
+N_o = 200;             % time points per period
+x0  = [0; 0];          % initial condition
+odeopts = odeset('RelTol',1e-9,'AbsTol',1e-12);  % tight tolerances for accuracy
+
+sys_duffing = @(t,x) [ x(2);
+    (1/m)*(-c*x(2) - k1*x(1) - k3*x(1)^3 + Famp*cos(2*pi*f_e*t)) ];
+
+[t_ss, x_ss] = simulate_and_plot(sys_duffing, x0, T_e, N_o, N_t, N_s, odeopts);
+
+poincare_section(t_ss, x_ss, T_e, N_s);
+
+f_range = [0 500];  % frequency axis limits [Hz]
+frequency_spectrum(t_ss, x_ss(:,1), T_e, f_range);
+
+%% i
+
+f_e = 400;              % excitation frequency [Hz]
+T_e = 1 / f_e;         % excitation period [s]
+N_t = 800;             % transient periods
+N_s = 800;             % steady-state periods
+N_o = 800;             % time points per period
+x0  = [0.1; 0];          % initial condition
+odeopts = odeset('RelTol',1e-9,'AbsTol',1e-12);  % tight tolerances for accuracy
+
+sys_duffing = @(t,x) [ x(2);
+    (1/m)*(-c*x(2) - k1*x(1) - k3*x(1)^3 + Famp*cos(2*pi*f_e*t)) ];
+
+[t_ss, x_ss] = simulate_and_plot(sys_duffing, x0, T_e, N_o, N_t, N_s, odeopts);
+
+poincare_section(t_ss, x_ss, T_e, N_s);
+
+f_range = [0 1000];  % frequency axis limits [Hz]
+frequency_spectrum(t_ss, x_ss(:,1), T_e, f_range);
+
+%% j
+
+f_e = 400;              % excitation frequency [Hz]
+T_e = 1 / f_e;         % excitation period [s]
+N_t = 400;             % transient periods
+N_s = 400;             % steady-state periods
+N_o = 400;             % time points per period
+x0  = [0.0176; 8];          % initial condition
+odeopts = odeset('RelTol',1e-9,'AbsTol',1e-12);  % tight tolerances for accuracy
+
+sys_duffing = @(t,x) [ x(2);
+    (1/m)*(-c*x(2) - k1*x(1) - k3*x(1)^3 + Famp*cos(2*pi*f_e*t)) ];
+
+[t_ss, x_ss] = simulate_and_plot(sys_duffing, x0, T_e, N_o, N_t, N_s, odeopts);
+
+poincare_section(t_ss, x_ss, T_e, N_s);
+
+f_range = [0 1000];  % frequency axis limits [Hz]
+frequency_spectrum(t_ss, x_ss(:,1), T_e, f_range);
+
+%% k
+
+f_e = 400;              % excitation frequency [Hz]
+T_e = 1 / f_e;         % excitation period [s]
+N_t = 1400;             % transient periods
+N_s = 1400;             % steady-state periods
+N_o = 1400;             % time points per period
+x0  = [0.018; 8];          % initial condition
+odeopts = odeset('RelTol',1e-9,'AbsTol',1e-12);  % tight tolerances for accuracy
+
+sys_duffing = @(t,x) [ x(2);
+    (1/m)*(-c*x(2) - k1*x(1) - k3*x(1)^3 + Famp*cos(2*pi*f_e*t)) ];
+
+[t_ss, x_ss] = simulate_and_plot(sys_duffing, x0, T_e, N_o, N_t, N_s, odeopts);
+
+poincare_section(t_ss, x_ss, T_e, N_s);
+
+f_range = [0 1000];  % frequency axis limits [Hz]
+frequency_spectrum(t_ss, x_ss(:,1), T_e, f_range);
