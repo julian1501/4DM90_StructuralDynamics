@@ -133,24 +133,6 @@ disp(abs(phi_at_resp));
 threshold = 1e-8;
 nonzero_idx = find(abs(phi_at_resp) > threshold);
 fprintf('Modes with |phi| > %.1e at response DOF: %s\n', threshold, mat2str(nonzero_idx));
-
-%% Plot the six mode shapes (displacements only)
-figure('Name','Mode shapes (displacements)','NumberTitle','off');
-nodes = 1:nno;
-valid_nodes = ~isnan(disp_indices);
-xnodes = nodes(valid_nodes);
-for k = 1:nev
-    subplot(3,2,k);
-    plot(xnodes, V(disp_indices(valid_nodes), k), '-o', 'LineWidth', 1.2, 'MarkerSize',4);
-    xlabel('Node'); ylabel(sprintf('\\phi_{%d} (disp)', k));
-    title(sprintf('Mode %d: %.4f Hz', k, freq_hz(k)));
-    grid on;
-    % mark the right-end value
-    hold on;
-    plot(lastNode, V(respDof,k), 'ks', 'MarkerFaceColor','y');
-    hold off;
-end
-
 %% FRF calculation (modal superposition, collocated)
 xi = 0.02;                        % modal damping ratio
 f = 0.2:0.2:500;                  % Hz
@@ -168,65 +150,39 @@ for k = 1:nev
     H_total = H_total + Hk(:);
 end
 
-%% Plot FRF: magnitude and phase (total + individual contributions)
-figure('Name','FRF (modal superposition)','NumberTitle','off');
-
-% Magnitude
-subplot(2,1,1);
-for k = 1:length(omega_n)
-    loglog(f, abs(H_modes(:,k)), 'LineWidth', 1.5);  % only individual modes
-    hold on;
-end
-hold off;
-xlabel('Frequency [Hz]'); ylabel('|H| [m/N]');
-title('Direct FRF (collocated at right-end) - total (black) + modal contributions');
-legendEntries = ['Total', arrayfun(@(kk) sprintf('Mode %d',kk), 1:nev, 'UniformOutput', false)];
-legend(legendEntries, 'Location','Best');
-grid on;
-
-% Phase
-subplot(2,1,2);
-for k = 1:length(omega_n)
-    semilogx(f, angle(H_modes(:,k))*180/pi, 'LineWidth', 1.5);
-    hold on;
-end
-hold off;
-xlabel('Frequency [Hz]'); ylabel('Phase [deg]');
-grid on;
-
-%%
-O = zeros(200); % Zero matrix
-I = eye(200); % Identity matrix  
-b= 50;   % Damping 
-B = zeros(200);        % start with all zeros
-idx = 200;   % index of last vertical DOF in reduced model
-B(idx, idx) = b;                % add dashpot
+%% 3G
+O = zeros(200);
+I = eye(200);
+b = 50;
+B = zeros(200);
+B(199,199) = b;   % second to last diangonal position
 
 A_m = [O I;
-    -Mbc^(-1)*Kbc -Mbc^(-1)*B];
+       -Mbc\Kbc  -Mbc\B];
 
-[eigenvectors_g,eigenvalues_g] = eig(A_m);    
-
+[eigenvectors_g, eigenvalues_g] = eig(A_m);    
 eigValsg = diag(eigenvalues_g);
-% Extract imaginary parts
-imagParts = imag(eigValsg);
+% Sorting eigenvectors
+real_vector = real(eigenvectors_g); % Taking the real parts of the eigenvectors
+eigenvectors_g_end_begin = real_vector(:, [1, end]); % Taking the first and last eigenvector --> corrospond to overdamped eigenvalues
 
-% Filter eigenvalues with imaginary part >= 0
-eigValsNonNeg = eigValsg(imagParts >= 0);
+% Extract displacement DOFs (odd rows)
+displacement_indices = 1:2:400;
 
-% Extract imaginary parts of filtered eigenvalues
-imagPartsNonNeg = imag(eigValsNonNeg);
+% Taking the displacements for both eigenvectors
+eigvec1_disp = eigenvectors_g_end_begin(displacement_indices, 1);
+eigvec2_disp = eigenvectors_g_end_begin(displacement_indices, 2);
 
-% Sort filtered eigenvalues based on imaginary parts (ascending)
-[~, idx] = sort(imagPartsNonNeg);
-sortedEigVals = eigValsNonNeg(idx);
+% Node numbers
+nodes = 1:200;
 
-% Take the six eigenvalues with the smallest non-negative imaginary parts
-numToTake = min(6, length(sortedEigVals)); % in case fewer than 6 eigenvalues qualify
-lowestSixEigVals = sortedEigVals(1:numToTake);
+% Plot real displacement against node numbers
+figure;
+plot(nodes, eigvec1_disp, 'LineWidth', 1.5); hold on;
+plot(nodes, eigvec2_disp, 'LineWidth', 1.5);
+xlabel('Node number');
+ylabel('Displacement amplitude');
+title('Displacement part of Eigenvectors');
+legend('Eigenvector 1', 'Eigenvector 2', 'Location', 'best');
+grid on;
 
-% Display the result
-disp('Six eigenvalues with smallest non-negative imaginary parts:');
-disp(lowestSixEigVals);
-
-zeta = -real(eigValsg) ./ abs(eigValsg);
