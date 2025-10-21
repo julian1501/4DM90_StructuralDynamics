@@ -33,16 +33,10 @@ fprintf('Exact eigenfrequencies (clamped-clamped beam):\n');
 for n=1:3
     fprintf('  mode %d: f_exact = %.6f Hz\n', n, f_exact(n));
 end
-fprintf('\nSingle-mode (Galerkin) approx (part a): f_approx = %.6f Hz\n', f_approx);
 rel_err = (f_approx - f_exact(1)) / f_exact(1) * 100;
-fprintf('Relative error (approx vs exact f1): %.4f %%\n\n', rel_err);
 
 %% --- compute analytical mode shapes (normalized) ---
-% Mode shape formula (non-dimensional coordinate xi = x/L):
-% phi(xi) = cosh(lambda*xi) - cos(lambda*xi) - 
-%           ((cosh(lambda) - cos(lambda)) / (sinh(lambda) - sin(lambda))) * (sinh(lambda*xi) - sin(lambda*xi))
-%
-% xi in [0,1]
+
 xi = linspace(0,1,501);
 modes = zeros(length(xi),3);
 
@@ -50,12 +44,10 @@ for n=1:3
     lam = lambda(n);
     C = (cosh(lam) - cos(lam)) / (sinh(lam) - sin(lam));
     phi = cosh(lam*xi) - cos(lam*xi) - C*(sinh(lam*xi) - sin(lam*xi));
-    % normalize: scale so max(abs(phi)) = 1
     phi = phi / max(abs(phi));
     modes(:,n) = phi;
 end
 
-% --- plot the three normalized eigenmodes ---
 figure('Name','Clamped-Clamped beam eigenmodes','NumberTitle','off','Color','w');
 plot(xi*L, modes(:,1), 'LineWidth', 1.6); hold on;
 plot(xi*L, modes(:,2), 'LineWidth', 1.4);
