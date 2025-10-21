@@ -1,6 +1,4 @@
 clear; clc; close all;
-
-%% --- beam parameters (assignment) ---
 rho = 2700;      % [kg/m^3]
 E   = 70e9;      % [Pa]
 b   = 0.02;      % [m]
@@ -17,7 +15,6 @@ k1_single = 2 * pi^4 * E * I / L^3;
 % These are the standard roots of cos(lambda) cosh(lambda) - 1 = 0
 lambda = [4.730040744862704, 7.853204624095837, 10.99560783800167];  % first 3
 
-% --- exact eigenfrequencies (Hz) ---
 f_exact = zeros(3,1);
 for n=1:3
     lam = lambda(n);
@@ -25,17 +22,14 @@ for n=1:3
     f_exact(n) = omega_n / (2*pi);                 % [Hz]
 end
 
-% --- single-mode approximate frequency from part (a) ---
 f_approx = sqrt(k1_single / m_single) / (2*pi);
 
-% Print results
 fprintf('Exact eigenfrequencies (clamped-clamped beam):\n');
 for n=1:3
     fprintf('  mode %d: f_exact = %.6f Hz\n', n, f_exact(n));
 end
 rel_err = (f_approx - f_exact(1)) / f_exact(1) * 100;
 
-%% --- compute analytical mode shapes (normalized) ---
 
 xi = linspace(0,1,501);
 modes = zeros(length(xi),3);
